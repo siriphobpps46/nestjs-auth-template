@@ -32,6 +32,23 @@ extract_json_value() {
   echo "$json" | grep -o "\"$key\":\"[^\"]*\"" | head -n 1 | cut -d':' -f2- | tr -d '"'
 }
 
+# Helper function to save formatted/prettified JSON using Node.js
+save_formatted_json() {
+  local raw_content="$1"
+  local target_path="$2"
+  # Prettifies JSON with 2-space indentation, falls back to raw write on error
+  echo "$raw_content" | node -e "
+    const fs = require('fs');
+    try {
+      const raw = fs.readFileSync(0, 'utf-8');
+      const parsed = JSON.parse(raw);
+      fs.writeFileSync('$target_path', JSON.stringify(parsed, null, 2));
+    } catch (e) {
+      fs.writeFileSync('$target_path', '$raw_content');
+    }
+  "
+}
+
 # Check if NestJS server is online
 echo -e "\n${YELLOW}Checking if server is online at $BASE_URL...${NC}"
 if ! curl -s --connect-timeout 3 "$BASE_URL" > /dev/null; then
@@ -56,7 +73,7 @@ LOGIN_RESPONSE=$(curl -s -X POST \
   "$BASE_URL/auth/login")
 
 # Save response formatted
-echo "$LOGIN_RESPONSE" > "$RESULTS_DIR/1_login_response.json"
+save_formatted_json "$LOGIN_RESPONSE" "$RESULTS_DIR/1_login_response.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/1_login_response.json${NC}"
 
 # Extract tokens
@@ -78,7 +95,7 @@ PERMISSIONS_RESPONSE=$(curl -s -X GET \
   -H "Authorization: Bearer $SUPERADMIN_ACCESS_TOKEN" \
   "$BASE_URL/permissions")
 
-echo "$PERMISSIONS_RESPONSE" > "$RESULTS_DIR/2_get_permissions.json"
+save_formatted_json "$PERMISSIONS_RESPONSE" "$RESULTS_DIR/2_get_permissions.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/2_get_permissions.json${NC}"
 echo -e "${GREEN}✓ Successfully fetched permissions list.${NC}"
 
@@ -106,7 +123,7 @@ ROLE_RESPONSE=$(curl -s -X POST \
   -d "$ROLE_PAYLOAD" \
   "$BASE_URL/roles")
 
-echo "$ROLE_RESPONSE" > "$RESULTS_DIR/3_create_role.json"
+save_formatted_json "$ROLE_RESPONSE" "$RESULTS_DIR/3_create_role.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/3_create_role.json${NC}"
 
 ROLE_ID=$(extract_json_value "$ROLE_RESPONSE" "id")
@@ -128,7 +145,7 @@ USER_RESPONSE=$(curl -s -X POST \
   -d "$USER_PAYLOAD" \
   "$BASE_URL/users")
 
-echo "$USER_RESPONSE" > "$RESULTS_DIR/4_create_user.json"
+save_formatted_json "$USER_RESPONSE" "$RESULTS_DIR/4_create_user.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/4_create_user.json${NC}"
 
 NEW_USER_ID=$(extract_json_value "$USER_RESPONSE" "id")
@@ -149,7 +166,7 @@ USER_LOGIN_RESPONSE=$(curl -s -X POST \
   -d "$USER_LOGIN_PAYLOAD" \
   "$BASE_URL/auth/login")
 
-echo "$USER_LOGIN_RESPONSE" > "$RESULTS_DIR/5_login_new_user.json"
+save_formatted_json "$USER_LOGIN_RESPONSE" "$RESULTS_DIR/5_login_new_user.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/5_login_new_user.json${NC}"
 
 # Extract new user tokens
@@ -171,7 +188,7 @@ REFRESH_RESPONSE=$(curl -s -X POST \
   -H "Authorization: Bearer $NEW_USER_REFRESH_TOKEN" \
   "$BASE_URL/auth/refresh")
 
-echo "$REFRESH_RESPONSE" > "$RESULTS_DIR/6_refresh_token_response.json"
+save_formatted_json "$REFRESH_RESPONSE" "$RESULTS_DIR/6_refresh_token_response.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/6_refresh_token_response.json${NC}"
 
 # Extract brand new tokens
@@ -196,12 +213,12 @@ LOGOUT_RESPONSE=$(curl -s -X POST \
   -d "$LOGOUT_PAYLOAD" \
   "$BASE_URL/auth/logout")
 
-echo "$LOGOUT_RESPONSE" > "$RESULTS_DIR/7_logout_response.json"
+save_formatted_json "$LOGOUT_RESPONSE" "$RESULTS_DIR/7_logout_response.json"
 echo -e "Response saved to: ${BLUE}$RESULTS_DIR/7_logout_response.json${NC}"
 echo -e "${GREEN}✓ User logged out and active tokens revoked successfully.${NC}"
 
 echo -e "\n${GREEN}===============================================${NC}"
-echo -e "${GREEN}    🎉 All API endpoints verified successfully! ${NC}"
+echo -e "${GREEN}    🎉 All API endpoints verified successfully!  ${NC}"
 echo -e "${GREEN}    All outputs saved inside standard folder:  ${NC}"
 echo -e "${GREEN}    ./$RESULTS_DIR/                            ${NC}"
 echo -e "${GREEN}===============================================${NC}"
