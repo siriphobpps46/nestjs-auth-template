@@ -64,6 +64,7 @@ export class AuthService {
       username: user.username,
       type: 'refresh',
       iss: user.id,
+      jti: Math.random().toString(36).substring(2) + Date.now().toString(36),
     };
 
     const refreshToken = this.jwtService.sign(refreshPayload, {

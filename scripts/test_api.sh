@@ -18,6 +18,12 @@ echo -e "${BLUE}===============================================${NC}"
 rm -rf "$RESULTS_DIR"
 mkdir -p "$RESULTS_DIR"
 
+# Generate randomized suffix for unique role & user creation per test run
+RANDOM_SUFX=$((100 + RANDOM % 900))
+ROLE_NAME="Warehouse Operator $RANDOM_SUFX"
+TEST_USERNAME="operator_$RANDOM_SUFX"
+TEST_EMAIL="operator_$RANDOM_SUFX@example.com"
+
 # Helper function to extract value from JSON string using regex
 extract_json_value() {
   local json="$1"
@@ -91,8 +97,8 @@ echo -e "${GREEN}✓ Dynamically fetched test permission IDs: $PRODUCT_READ_PERM
 # ==========================================
 # STEP 3: Create a Custom Role
 # ==========================================
-echo -e "\n${YELLOW}[Step 3] Creating a new Role (Warehouse Operator) with specific permissions...${NC}"
-ROLE_PAYLOAD="{\"name\":\"Warehouse Operator\",\"description\":\"Allows reading and creating products\",\"permission_ids\":[\"$PRODUCT_READ_PERM_ID\",\"$PRODUCT_CREATE_PERM_ID\"]}"
+echo -e "\n${YELLOW}[Step 3] Creating a new Role ($ROLE_NAME) with specific permissions...${NC}"
+ROLE_PAYLOAD="{\"name\":\"$ROLE_NAME\",\"description\":\"Allows reading and creating products\",\"permission_ids\":[\"$PRODUCT_READ_PERM_ID\",\"$PRODUCT_CREATE_PERM_ID\"]}"
 
 ROLE_RESPONSE=$(curl -s -X POST \
   -H "Content-Type: application/json" \
@@ -108,13 +114,13 @@ if [ -z "$ROLE_ID" ]; then
   echo -e "${RED}❌ Role creation failed!${NC}"
   exit 1
 fi
-echo -e "${GREEN}✓ Role 'Warehouse Operator' created successfully with ID: $ROLE_ID${NC}"
+echo -e "${GREEN}✓ Role '$ROLE_NAME' created successfully with ID: $ROLE_ID${NC}"
 
 # ==========================================
 # STEP 4: Create a New User
 # ==========================================
 echo -e "\n${YELLOW}[Step 4] Creating a new User linked to our new Warehouse Role...${NC}"
-USER_PAYLOAD="{\"username\":\"operator1\",\"email\":\"operator1@example.com\",\"password\":\"Operator123!\",\"employee_id\":\"EMP-00100\",\"role_ids\":[\"$ROLE_ID\"]}"
+USER_PAYLOAD="{\"username\":\"$TEST_USERNAME\",\"email\":\"$TEST_EMAIL\",\"password\":\"Operator123!\",\"employee_id\":\"EMP-00100\",\"role_ids\":[\"$ROLE_ID\"]}"
 
 USER_RESPONSE=$(curl -s -X POST \
   -H "Content-Type: application/json" \
@@ -130,13 +136,13 @@ if [ -z "$NEW_USER_ID" ]; then
   echo -e "${RED}❌ User creation failed!${NC}"
   exit 1
 fi
-echo -e "${GREEN}✓ User 'operator1' created successfully with ID: $NEW_USER_ID${NC}"
+echo -e "${GREEN}✓ User '$TEST_USERNAME' created successfully with ID: $NEW_USER_ID${NC}"
 
 # ==========================================
 # STEP 5: Login as the New User
 # ==========================================
-echo -e "\n${YELLOW}[Step 5] Logging in as the newly created User 'operator1'...${NC}"
-USER_LOGIN_PAYLOAD='{"username":"operator1","password":"Operator123!"}'
+echo -e "\n${YELLOW}[Step 5] Logging in as the newly created User '$TEST_USERNAME'...${NC}"
+USER_LOGIN_PAYLOAD="{\"username\":\"$TEST_USERNAME\",\"password\":\"Operator123!\"}"
 
 USER_LOGIN_RESPONSE=$(curl -s -X POST \
   -H "Content-Type: application/json" \
@@ -181,7 +187,7 @@ echo -e "${GREEN}✓ Refresh token rotation successful! New Access Token obtaine
 # ==========================================
 # STEP 7: Perform Logout
 # ==========================================
-echo -e "\n${YELLOW}[Step 7] Logging out of 'operator1' session...${NC}"
+echo -e "\n${YELLOW}[Step 7] Logging out of '$TEST_USERNAME' session...${NC}"
 LOGOUT_PAYLOAD="{\"refresh_token\":\"$NEW_REFRESH_TOKEN\"}"
 
 LOGOUT_RESPONSE=$(curl -s -X POST \
