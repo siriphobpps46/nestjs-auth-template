@@ -1,0 +1,90 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  username      String         @unique @db.VarChar(30)
+  email         String?        @unique @db.VarChar(100)
+  password      String         @db.VarChar(100)
+  token_version Int            @default(1)
+  is_active     Boolean        @default(true)
+  employee_id   String?        @db.VarChar(50)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  deleted_at    DateTime?
+  
+  user_roles     UserRole[]
+  refresh_tokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user_roles       UserRole[]
+  role_permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100) // format: resource:action
+  resource    String   @db.VarChar(50)
+  action      String   @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  role_permissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model UserRole {
+  user_id String @db.Uuid
+  role_id String @db.Uuid
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  role_id       String @db.Uuid
+  permission_id String @db.Uuid
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  token      String   @unique @db.VarChar(500)
+  expires_at DateTime
+  is_revoked Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
